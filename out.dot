@@ -1,0 +1,53 @@
+
+digraph {
+    graph [pad="0.5", nodesep="0.5", ranksep="2", dpi=600];
+    node [shape=plain]
+    rankdir=LR;
+    thpool_ [label=<
+    <table border="0" cellborder="1" cellspacing="0">
+    <tr><td colspan="2" port="head"><i>thpool_</i></td></tr>
+    <tr><td>jobqueue</td><td port="jobqueue">jobqueue</td></tr>
+    <tr><td>pthread_cond_t</td><td port="threads_all_idle">threads_all_idle</td></tr>
+    <tr><td>pthread_mutex_t</td><td port="thcount_lock">thcount_lock</td></tr>
+    <tr><td>volatile_int</td><td port="num_threads_working">num_threads_working</td></tr>
+    <tr><td>volatile_int</td><td port="num_threads_alive">num_threads_alive</td></tr>
+    <tr><td>thread</td><td port="__threads">**threads</td></tr>
+    </table>>];
+    thread [label=<
+    <table border="0" cellborder="1" cellspacing="0">
+    <tr><td colspan="2" port="head"><i>thread</i></td></tr>
+    <tr><td>thpool_</td><td port="_thpool_p">*thpool_p</td></tr>
+    <tr><td>pthread_t</td><td port="pthread">pthread</td></tr>
+    <tr><td>int</td><td port="id">id</td></tr>
+    </table>>];
+    jobqueue [label=<
+    <table border="0" cellborder="1" cellspacing="0">
+    <tr><td colspan="2" port="head"><i>jobqueue</i></td></tr>
+    <tr><td>int</td><td port="len">len</td></tr>
+    <tr><td>bsem</td><td port="_has_jobs">*has_jobs</td></tr>
+    <tr><td>job</td><td port="_rear">*rear</td></tr>
+    <tr><td>job</td><td port="_front">*front</td></tr>
+    <tr><td>pthread_mutex_t</td><td port="rwmutex">rwmutex</td></tr>
+    </table>>];
+    job [label=<
+    <table border="0" cellborder="1" cellspacing="0">
+    <tr><td colspan="2" port="head"><i>job</i></td></tr>
+    <tr><td>void</td><td port="_arg">*arg</td></tr>
+    <tr><td colspan="2" port="function">void (*function)(void *arg)</td></tr>
+    <tr><td>job</td><td port="_prev">*prev</td></tr>
+    </table>>];
+    bsem [label=<
+    <table border="0" cellborder="1" cellspacing="0">
+    <tr><td colspan="2" port="head"><i>bsem</i></td></tr>
+    <tr><td>int</td><td port="v">v</td></tr>
+    <tr><td>pthread_cond_t</td><td port="cond">cond</td></tr>
+    <tr><td>pthread_mutex_t</td><td port="mutex">mutex</td></tr>
+    </table>>];
+    thpool_:jobqueue->jobqueue:head
+    thpool_:__threads->thread:head
+    thread:_thpool_p->thpool_:head
+    jobqueue:_has_jobs->bsem:head
+    jobqueue:_rear->job:head
+    jobqueue:_front->job:head
+    job:_prev->job:head
+}

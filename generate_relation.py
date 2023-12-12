@@ -17,7 +17,7 @@ nodeName = ""
 
 dotText = '''
 digraph {
-    graph [pad="0.5", nodesep="0.5", ranksep="2", dpi=600];
+    graph [pad="0.5", nodesep="0.5", ranksep="2", dpi=100];
     node [shape=plain]
     rankdir=LR;
 '''

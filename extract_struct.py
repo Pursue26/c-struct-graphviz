@@ -1,17 +1,12 @@
 import fileinput, re
 
 def replace(match):
-    word = match.group(0)
-    new_word = ' ' + word[::-1].strip()
-    return new_word
+    word = (' ' if match.group(0).count(' ') > 0 else '') + '*' * match.group(0).count('*')
+    return word
 
 def normalize(declaration):
-    # 匹配不规范的定义
-    pattern = r'((?<!\/)\*+\s+)'
+    pattern = r'(?<=\w)\s*(?<!\/)\**\s+' # 匹配不规范的定义
     declaration = re.sub(pattern, replace, declaration)
-    pattern = r'(?<=\w)\s{2,}'
-    declaration = re.sub(pattern, ' ', declaration)
-
     return declaration
 
 output_str = ""

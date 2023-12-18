@@ -1,198 +1,235 @@
 import fileinput
-
 import re
-
-output_str = ""
-depth = 0
-collect = 0
-strus = []
-fieldobj = {}
-stack = []
-node_type = "struct"
-
-nodeList = []
-linkList = []
-nodeName = ""
-
-
-dotText = '''
-digraph {
-    graph [pad="0.5", nodesep="0.5", ranksep="2", dpi=100];
-    node [shape=plain]
-    rankdir=LR;
-'''
 
 
 def convert_key(key):
+    """
+    将特殊值转换为指定值
+
+    参数: 
+    key: 特殊值
+
+    返回: 
+    转换后的键
+    """
     key = re.sub(r'\*', "_", key)
     key = re.sub(r'\[', "_", key)
     key = re.sub(r'\]', "_", key)
     return key
 
 
-for tmpline in fileinput.input():
+def process_struct_or_union(tmpline, depth, node_type, nodeName):
+    """
+    处理结构体或联合体的定义
 
-    if "struct" in tmpline and "{" in tmpline or "union" in tmpline and "{" in tmpline:
-        depth = depth + 1
-        if "union" in tmpline:
-            node_type = "union"
-            continue
-        m = re.search(r'\s*struct\s*([0-9a-zA-Z_]*)\s*{\s*', tmpline)
-        assert m is not None
-        nodeName = m.group(1)
+    参数: 
+    tmpline: 当前行的代码字符串
+    depth: 当前代码块的嵌套深度
+    node_type: 当前代码块的类型（"struct" 或 "union"）
+    nodeName: 当前代码块的名称
 
-    elif "}" in tmpline:
-        m = re.search(r'}\s*([0-9a-zA-Z_\-\[\]\*]*)\s*\;\s*', tmpline)
-        assert m is not None
-        struct_name = m.group(1)
-        if struct_name == "":
-            struct_name = nodeName
+    返回: 
+    depth: 更新后的嵌套深度
+    node_type: 更新后的代码块类型
+    nodeName: 更新后的代码块名称
+    """
+    depth += 1
+    if "union" in tmpline:
+        node_type = "union"
+        return depth, node_type
+    m = re.search(r'\s*struct\s*([0-9a-zA-Z_]*)\s*{\s*', tmpline)
+    assert m is not None
+    nodeName = m.group(1)
+    return depth, node_type, nodeName
+
+
+def process_closing_brace(tmpline, nodeName, stack, depth, strus):
+    """
+    处理闭合大括号
+
+    参数: 
+    tmpline: 当前行的代码字符串
+    nodeName: 当前代码块的名称
+    stack: 代码块的堆栈
+    depth: 当前代码块的嵌套深度
+    strus: 存储结构体和联合体的列表
+
+    返回: 
+    stack: 更新后的代码块堆栈
+    depth: 更新后的嵌套深度
+    """
+    m = re.search(r'}\s*([0-9a-zA-Z_\-\[\]\*]*)\s*\;\s*', tmpline)
+    assert m is not None
+    struct_name = m.group(1)
+    if struct_name == "":
+        struct_name = nodeName
+    top_node = stack[-1]
+    curList = []
+    curObj = {}
+    while top_node["_depth"] == depth:
+        curList.append(top_node)
+        node_type = top_node["_node_type"]
+        stack.pop()
+        if len(stack) == 0:
+            break
         top_node = stack[-1]
-        curList = []
-        curObj = {}
-        while top_node["_depth"] == depth:
-            curList.append(top_node)
-            node_type = top_node["_node_type"]
-            stack.pop()
-            if len(stack) == 0:
-                break
-            top_node = stack[-1]
-        curObj["val"] = curList
-        curObj["key"] = struct_name
-        curObj["convert_key"] = convert_key(struct_name)
-        depth = depth - 1
-        curObj["_depth"] = depth
-        curObj["_node_type"] = node_type
-        curObj["_cur_node_type"] = "stru"
-        stack.append(curObj)
-        if depth == 0:
-            strus.append(stack[0])
-            stack = []
-            continue
+    curObj["val"] = curList
+    curObj["key"] = struct_name
+    curObj["convert_key"] = convert_key(struct_name)
+    depth -= 1
+    curObj["_depth"] = depth
+    curObj["_node_type"] = node_type
+    curObj["_cur_node_type"] = "stru"
+    stack.append(curObj)
+    if depth == 0:
+        strus.append(stack[0])
+        stack = []
+    return stack, depth
+
+
+def process_fieldobj(tmpline, depth, node_type, stack):
+    """
+    处理字段对象
+
+    参数: 
+    tmpline: 当前行的代码字符串
+    depth: 当前代码块的嵌套深度
+    node_type: 当前代码块的类型（"struct" 或 "union"）
+    stack: 代码块的堆栈
+
+    返回: 
+    stack: 更新后的代码块堆栈
+    """
+    fieldobj = {}
+    tmpline = re.sub(r'; *', '', tmpline)
+    tmpline = tmpline.strip()
+    if "(" in tmpline:
+        m = re.search(r'.*\(\s*\*\s*([0-9a-zA-Z_\-]+)\).*', tmpline)
+        fieldobj["val"] = tmpline
+        assert m is not None
+        fieldobj["key"] = m.group(1)
+        fieldobj["convert_key"] = convert_key(fieldobj["key"])
+        fieldobj["_depth"] = depth
+        fieldobj["_cur_node_type"] = "func"
     else:
-
-        fieldobj = {}
-        tmpline = re.sub(r'; *', '', tmpline)
+        tmpline = re.sub(r'struct', '', tmpline)
         tmpline = tmpline.strip()
-        if "(" in tmpline:
-
-            m = re.search(r'.*\(\s*\*\s*([0-9a-zA-Z_\-]+)\).*', tmpline)
-            fieldobj["val"] = tmpline
-            assert m is not None
-            fieldobj["key"] = m.group(1)
-            fieldobj["convert_key"] = convert_key(fieldobj["key"])
-            fieldobj["_depth"] = depth
-            fieldobj["_cur_node_type"] = "func"
-        else:
-            # if "[" in tmpline:
-            #     tmpline = re.sub(r'\[', '_', tmpline)
-            #     tmpline = re.sub(r'\]', '_', tmpline)
-            tmpline = re.sub(r'struct', '', tmpline)
-            tmpline = tmpline.strip()
-            if "," in tmpline:
-
-                fieldListOri = tmpline.split(",")
-                fieldList = fieldListOri[0].split(" ")
-
-                for field in fieldListOri[1:len(fieldListOri)]:
-                    fieldobj = {}
-                    fieldobj["val"] = "_".join(fieldList[0:-1])
-                    fieldobj["key"] = field.strip(" ")
-                    fieldobj["convert_key"] = convert_key(fieldobj["key"])
-                    fieldobj["_depth"] = depth
-                    fieldobj["_cur_node_type"] = "attr"
-                    fieldobj["_node_type"] = node_type
-                    stack.append(fieldobj)
-
+        if "," in tmpline:
+            fieldListOri = tmpline.split(",")
+            fieldList = fieldListOri[0].split(" ")
+            for field in fieldListOri[1:len(fieldListOri)]:
                 fieldobj = {}
-                fieldobj["val"] = "_".join(fieldList[0:-1])
+                fieldobj["val"] = " ".join(fieldList[0:-1])
+                fieldobj["key"] = field.strip(" ")
+                fieldobj["convert_key"] = convert_key(fieldobj["key"])
                 fieldobj["_depth"] = depth
                 fieldobj["_cur_node_type"] = "attr"
                 fieldobj["_node_type"] = node_type
-                fieldobj["key"] = fieldList[-1]
-                fieldobj["convert_key"] = convert_key(fieldobj["key"])
                 stack.append(fieldobj)
-                continue
-
-            else:
-                fieldList = tmpline.split(" ")
-                name = fieldList[-1].strip()
-                fieldobj["val"] = "_".join(fieldList[0:-1])
-                fieldobj["key"] = name
-                fieldobj["convert_key"] = convert_key(fieldobj["key"])
-                fieldobj["_depth"] = depth
-                fieldobj["_cur_node_type"] = "attr"
-
-        fieldobj["_node_type"] = node_type
-        stack.append(fieldobj)
-
-
-nodeStack = []
-linkStr = ""
-
-
-sset = {"mock"}
-for s in strus:
-    s["path"] = s["convert_key"]
-    nodeStack.append(s)
-    sset.add(s["key"])
-
-
-while (len(nodeStack) > 0):
-    curNode = nodeStack.pop()
-    key = curNode["key"]
-    dotText = dotText + """    {} [label=<
-    <table border="0" cellborder="1" cellspacing="0">
-    <tr><td colspan="2" port="head"><i>{}</i></td></tr>\n""".format(curNode["path"], key)
-
-    vals = curNode["val"]
-    for row in vals:
-        replacedKey = row["convert_key"]
-        if isinstance(row["val"], list):
-            tmpNode = {}
-            # tmpNode["path"] = curNode["path"] +"#" + row["key"]
-            tmpNode["key"] = row["key"]
-            tmpNode["convert_key"] = row["convert_key"]
-            tmpNode["val"] = row["val"]
-            # tmpNode["path"] = "{}_{}".format(curNode["path"],row["convert_key"])
-            tmpNode["path"] = row["convert_key"]
-            nodeStack.append(tmpNode)
-            tmpLinkStr = "    {}:{}->{}:head\n".format(
-                curNode["path"], tmpNode["path"], row["key"])
-            linkStr = linkStr + tmpLinkStr
-            sset.add(tmpNode["path"])
-        nodeType = row["val"]
-        if isinstance(row["val"], list):
-            nodeType = row["_node_type"]
-
-        if not isinstance(row["val"], list):
-            linkFlag = False
-            # for st in sset:
-            #     if len(st) > len(row["val"]) and row["val"] in st:
-            #         linkFlag = True
-            #         tmpLinkStr = "    {}:{}->{}:head\n".format(curNode["path"], replacedKey,st)
-            #         linkStr = linkStr + tmpLinkStr
-            #         dotText = dotText + """    <tr><td>{}</td><td port="{}">{}</td></tr>\n""".format(st,replacedKey, row["key"])
-            #         break
-
-            if row["val"] in sset and linkFlag == False:
-                tmpLinkStr = "    {}:{}->{}:head\n".format(
-                    curNode["path"], replacedKey, row["val"])
-                linkStr = linkStr + tmpLinkStr
-
-        if row["_cur_node_type"] == "func":
-            dotText = dotText + \
-                """    <tr><td colspan="2" port="{}">{}</td></tr>\n""".format(
-                    replacedKey, row["val"])
+            fieldobj = {}
+            fieldobj["val"] = " ".join(fieldList[0:-1])
+            fieldobj["_depth"] = depth
+            fieldobj["_cur_node_type"] = "attr"
+            fieldobj["_node_type"] = node_type
+            fieldobj["key"] = fieldList[-1]
+            fieldobj["convert_key"] = convert_key(fieldobj["key"])
+            stack.append(fieldobj)
+            return stack
         else:
-            dotText = dotText + \
-                """    <tr><td>{}</td><td port="{}">{}</td></tr>\n""".format(
-                    nodeType, replacedKey, row["key"])
+            fieldList = tmpline.split(" ")
+            name = fieldList[-1].strip()
+            fieldobj["val"] = " ".join(fieldList[0:-1])
+            fieldobj["key"] = name
+            fieldobj["convert_key"] = convert_key(fieldobj["key"])
+            fieldobj["_depth"] = depth
+            fieldobj["_cur_node_type"] = "attr"
+    fieldobj["_node_type"] = node_type
+    stack.append(fieldobj)
+    return stack
 
-    dotText = dotText + """    </table>>];\n"""
+
+def process_code(fileinput):
+    """
+    处理输入代码的函数
+
+    参数: 
+    fileinput: 输入的代码文件
+
+    返回: 
+    strus: 结构体或联合体的列表
+    """
+    depth = 0
+    strus = []
+    stack = []
+    node_type = "struct"
+    nodeName = ""
+    for tmpline in fileinput:
+        if "struct" in tmpline and "{" in tmpline or "union" in tmpline and "{" in tmpline:
+            depth, node_type, nodeName = process_struct_or_union(tmpline, depth, node_type, nodeName)
+        elif "}" in tmpline:
+            stack, depth = process_closing_brace(tmpline, nodeName, stack, depth, strus)
+        else:
+            stack = process_fieldobj(tmpline, depth, node_type, stack)
+    return strus
 
 
-dotText = dotText + linkStr
+def generate_dot_text(strus):
+    dotText = '''
+digraph {
+    graph [pad="0.5", nodesep="0.5", ranksep="2", dpi=300];
+    node [shape=plain]
+    rankdir=LR;
+'''
+    linkStr = ""
+    nodeStack = []
+    sset = {"mock"}
+    for s in strus:
+        s["path"] = s["convert_key"]
+        nodeStack.append(s)
+        sset.add(s["key"])
+    while len(nodeStack) > 0:
+        curNode = nodeStack.pop()
+        key = curNode["key"]
+        dotText += """    {} [label=<
+        <table border="0" cellborder="1" cellspacing="0">
+        <tr><td colspan="2" port="head"><i>{}</i></td></tr>\n""".format(curNode["path"], key)
+        vals = curNode["val"] #[::-1] # 反转是为了按结构体成员顺序输出
+        for row in vals:
+            replacedKey = row["convert_key"]
+            if isinstance(row["val"], list):
+                tmpNode = {}
+                tmpNode["key"] = row["key"]
+                tmpNode["convert_key"] = row["convert_key"]
+                tmpNode["val"] = row["val"]
+                tmpNode["path"] = row["convert_key"]
+                nodeStack.append(tmpNode)
+                tmpLinkStr = "    {}:{}->{}:head\n".format(
+                    curNode["path"], tmpNode["path"], row["key"])
+                linkStr += tmpLinkStr
+                sset.add(tmpNode["path"])
+            nodeType = row["val"]
+            if isinstance(row["val"], list):
+                nodeType = row["_node_type"]
+            if not isinstance(row["val"], list):
+                linkFlag = False
+                if row["val"] in sset and linkFlag == False:
+                    tmpLinkStr = "    {}:{}->{}:head\n".format(curNode["path"], replacedKey, row["val"])
+                    linkStr += tmpLinkStr
+            if row["_cur_node_type"] == "func":
+                dotText += """    <tr><td colspan="2" port="{}">{}</td></tr>\n""".format(replacedKey, row["val"])
+            else:
+                dotText += """    <tr><td>{}</td><td port="{}">{}</td></tr>\n""".format(nodeType, replacedKey, row["key"])
+        dotText += """    </table>>];\n"""
+    dotText += linkStr
+    dotText += """}"""
+    return dotText
 
-dotText = dotText + """}"""
-print(dotText)
+
+def main():
+    strus = process_code(fileinput.input())
+    dotText = generate_dot_text(strus)
+    print(dotText)
+
+
+if __name__ == "__main__":
+    main()

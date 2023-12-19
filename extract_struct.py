@@ -5,6 +5,10 @@ def replace(match):
     return word
 
 def normalize(declaration):
+    # 去除 // 中文注释
+    if '//' in declaration:
+        declaration = declaration.split('//')[0]
+        declaration += '' if declaration.endswith("\n") else '\n'
     pattern = r'(?<=\w)\s*(?<!\/)\**\s+' # 匹配不规范的定义
     declaration = re.sub(pattern, replace, declaration)
     return declaration

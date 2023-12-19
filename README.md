@@ -13,8 +13,15 @@
 ## 提取结构体
 
 ```sh
-cat *.c | python3 ./extract_struct.py | sed -E  's/typedef *//' | sed -E 's/^}.*/};/' | sed -E '/\/\*/{:start /\*\//!{N;b start};s/\/\*.*\*\///}' | sed -E 's#/\*.*\*/##'  | sed -E '/^ *$/d' > struct.txt
+cat *.c | python3 ./extract_struct.py \
+    | sed -E  's/typedef *//' \
+    | sed -E 's/^}.*/};/' \
+    | sed -E '/\/\*/{:start /\*\//!{N;b start};s/\/\*.*\*\///}' \
+    | sed -E 's#/\*.*\*/##' \
+    | sed -E '/^ *$/d' > struct.txt
 ```
+
+> 如果有 `typedef` 结构体，要保持 `typedef struct xyzabc {...} xyzabc;`，重命名要跟结构体名一致，否则可能出现关系图不正确。
 
 ## 结构体绘图
 

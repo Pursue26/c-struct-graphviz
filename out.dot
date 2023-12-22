@@ -3,51 +3,67 @@ digraph {
     graph [pad="0.5", nodesep="0.5", ranksep="2", dpi=300];
     node [shape=plain]
     rankdir=LR;
+    tagDL_NODE [label=<
+        <table border="0" cellborder="1" cellspacing="0">
+        <tr><td colspan="2" port="head"><i>tagDL_NODE</i></td></tr>
+    <tr><td>tagDL_NODE</td><td port="_pstNext">*pstNext</td></tr>
+    <tr><td>tagDL_NODE</td><td port="__ppstPre">**ppstPre</td></tr>
+    </table>>];
+    HASH_TABLE_S [label=<
+        <table border="0" cellborder="1" cellspacing="0">
+        <tr><td colspan="2" port="head"><i>HASH_TABLE_S</i></td></tr>
+    <tr><td>unsigned long long</td><td port="ulSize">ulSize</td></tr>
+    <tr><td colspan="2" port="pfHash">unsigned long long (*pfHash)(const void *)</td></tr>
+    <tr><td>HASH_LIST_S</td><td port="_pstBckt">*pstBckt</td></tr>
+    </table>>];
     thpool_ [label=<
         <table border="0" cellborder="1" cellspacing="0">
         <tr><td colspan="2" port="head"><i>thpool_</i></td></tr>
-    <tr><td>jobqueue</td><td port="jobqueue">jobqueue</td></tr>
-    <tr><td>pthread_cond_t</td><td port="threads_all_idle">threads_all_idle</td></tr>
-    <tr><td>pthread_mutex_t</td><td port="thcount_lock">thcount_lock</td></tr>
-    <tr><td>volatile int</td><td port="num_threads_working">num_threads_working</td></tr>
-    <tr><td>volatile int</td><td port="num_threads_alive">num_threads_alive</td></tr>
     <tr><td>thread</td><td port="__threads">**threads</td></tr>
+    <tr><td>volatile int</td><td port="num_threads_alive">num_threads_alive</td></tr>
+    <tr><td>volatile int</td><td port="num_threads_working">num_threads_working</td></tr>
+    <tr><td>pthread_mutex_t</td><td port="thcount_lock">thcount_lock</td></tr>
+    <tr><td>pthread_cond_t</td><td port="threads_all_idle">threads_all_idle</td></tr>
+    <tr><td>jobqueue</td><td port="jobqueue">jobqueue</td></tr>
     </table>>];
     thread [label=<
         <table border="0" cellborder="1" cellspacing="0">
         <tr><td colspan="2" port="head"><i>thread</i></td></tr>
-    <tr><td>thpool_</td><td port="_thpool_p">*thpool_p</td></tr>
-    <tr><td>pthread_t</td><td port="pthread">pthread</td></tr>
     <tr><td>int</td><td port="id">id</td></tr>
+    <tr><td>pthread_t</td><td port="pthread">pthread</td></tr>
+    <tr><td>thpool_</td><td port="_thpool_p">*thpool_p</td></tr>
     </table>>];
     jobqueue [label=<
         <table border="0" cellborder="1" cellspacing="0">
         <tr><td colspan="2" port="head"><i>jobqueue</i></td></tr>
-    <tr><td>int</td><td port="len">len</td></tr>
-    <tr><td>bsem</td><td port="_has_jobs">*has_jobs</td></tr>
-    <tr><td>job</td><td port="_rear">*rear</td></tr>
-    <tr><td>job</td><td port="_front">*front</td></tr>
     <tr><td>pthread_mutex_t</td><td port="rwmutex">rwmutex</td></tr>
+    <tr><td>job</td><td port="_front">*front</td></tr>
+    <tr><td>job</td><td port="_rear">*rear</td></tr>
+    <tr><td>bsem</td><td port="_has_jobs">*has_jobs</td></tr>
+    <tr><td>int</td><td port="len">len</td></tr>
     </table>>];
     job [label=<
         <table border="0" cellborder="1" cellspacing="0">
         <tr><td colspan="2" port="head"><i>job</i></td></tr>
-    <tr><td>void</td><td port="_arg">*arg</td></tr>
-    <tr><td colspan="2" port="function">void (*function)(void *arg)</td></tr>
     <tr><td>job</td><td port="_prev">*prev</td></tr>
+    <tr><td colspan="2" port="function">void (*function)(void *arg)</td></tr>
+    <tr><td>void</td><td port="_arg">*arg</td></tr>
     </table>>];
     bsem [label=<
         <table border="0" cellborder="1" cellspacing="0">
         <tr><td colspan="2" port="head"><i>bsem</i></td></tr>
-    <tr><td>int</td><td port="v">v</td></tr>
-    <tr><td>pthread_cond_t</td><td port="cond">cond</td></tr>
     <tr><td>pthread_mutex_t</td><td port="mutex">mutex</td></tr>
+    <tr><td>pthread_cond_t</td><td port="cond">cond</td></tr>
+    <tr><td>int</td><td port="v">v</td></tr>
     </table>>];
-    thpool_:jobqueue->jobqueue:head
-    thpool_:__threads->thread:head
-    thread:_thpool_p->thpool_:head
-    jobqueue:_has_jobs->bsem:head
-    jobqueue:_rear->job:head
-    jobqueue:_front->job:head
-    job:_prev->job:head
+    tagDL_NODE:_pstNext->tagDL_NODE:head [style="invis"]
+    tagDL_NODE:__ppstPre->tagDL_NODE:head [style="invis"]
+    HASH_TABLE_S:_pstBckt->tagDL_NODE:head [style="dashed"]
+    thpool_:__threads->thread:head [style="solid"]
+    thpool_:jobqueue->jobqueue:head [style="solid"]
+    thread:_thpool_p->thpool_:head [style="solid"]
+    jobqueue:_front->job:head [style="solid"]
+    jobqueue:_rear->job:head [style="solid"]
+    jobqueue:_has_jobs->bsem:head [style="solid"]
+    job:_prev->job:head [style="invis"]
 }

@@ -28,3 +28,20 @@ struct thpool_{
     pthread_cond_t threads_all_idle;    
     jobqueue jobqueue;                  
 };
+struct HASH_TABLE_S {
+    unsigned long long ulSize; 
+    unsigned long long (*pfHash)(const void *); 
+    HASH_LIST_S *pstBckt; 
+};
+typedef DL_HEAD_S HASH_LIST_S;
+struct tagDL_NODE {
+    struct tagDL_NODE *pstNext; 
+    struct tagDL_NODE **ppstPre; 
+};
+typedef bsem bsem; 
+typedef job job; 
+typedef jobqueue jobqueue; 
+typedef thread thread; 
+typedef thpool_ thpool_; 
+typedef HASH_TABLE_S HASH_TABLE_S; 
+typedef tagDL_NODE DL_HEAD_S; 

@@ -36,10 +36,9 @@ def process_struct_or_union(tmpline, depth, node_type, nodeName):
     depth += 1
     if "union" in tmpline:
         node_type = "union"
-        return depth, node_type
-    m = re.search(r'\s*struct\s*([0-9a-zA-Z_]*)\s*{\s*', tmpline)
+    m = re.search(r'\s*(struct|union)\s*([0-9a-zA-Z_]*)\s*{\s*', tmpline)
     assert m is not None
-    nodeName = m.group(1)
+    nodeName = m.group(2)
     return depth, node_type, nodeName
 
 
@@ -163,17 +162,25 @@ def process_code(fileinput):
     stack = []
     node_type = "struct"
     nodeName = ""
+    aliases = {} # 存储结构体别名映射关系的字典
+
     for tmpline in fileinput:
         if "struct" in tmpline and "{" in tmpline or "union" in tmpline and "{" in tmpline:
             depth, node_type, nodeName = process_struct_or_union(tmpline, depth, node_type, nodeName)
         elif "}" in tmpline:
             stack, depth = process_closing_brace(tmpline, nodeName, stack, depth, strus)
+        elif "typedef" in tmpline:
+            # 处理结构体重命名的情况，如typedef DL_HEAD_S HASH_LIST_S; typedef struct thpool_ thpool_;
+            m = re.search(r' *typedef +(\w+|struct +\w+) +(\**\w+) *;', tmpline)
+            if m is not None:
+                aliases[m.group(2)] = m.group(1) # key为别名，val为原名
         else:
             stack = process_fieldobj(tmpline, depth, node_type, stack)
-    return strus
+
+    return strus, aliases
 
 
-def generate_dot_text(strus):
+def generate_dot_text(strus, aliases):
     dotText = '''
 digraph {
     graph [pad="0.5", nodesep="0.5", ranksep="2", dpi=300];
@@ -182,7 +189,7 @@ digraph {
 '''
     linkStr = ""
     nodeStack = []
-    sset = {"mock"}
+    sset = {"mock"} # struct name (key) set
     for s in strus:
         s["path"] = s["convert_key"]
         nodeStack.append(s)
@@ -193,7 +200,7 @@ digraph {
         dotText += """    {} [label=<
         <table border="0" cellborder="1" cellspacing="0">
         <tr><td colspan="2" port="head"><i>{}</i></td></tr>\n""".format(curNode["path"], key)
-        vals = curNode["val"] #[::-1] # 反转是为了按结构体成员顺序输出
+        vals = curNode["val"][::-1] # 反转是为了按结构体成员顺序输出
         for row in vals:
             replacedKey = row["convert_key"]
             if isinstance(row["val"], list):
@@ -213,8 +220,17 @@ digraph {
             if not isinstance(row["val"], list):
                 linkFlag = False
                 if row["val"] in sset and linkFlag == False:
-                    tmpLinkStr = "    {}:{}->{}:head\n".format(curNode["path"], replacedKey, row["val"])
+                    tmpLinkStr = "    {}:{}->{}:head [style=\"{}\"]\n".format(curNode["path"], replacedKey, row["val"], 
+                    "solid" if curNode["path"] != row["val"] else "invis")
                     linkStr += tmpLinkStr
+                elif row["val"] in aliases and linkFlag == False: # 处理成员为结构体别名的情况，若别名在别名字典中
+                    origName = aliases[row["val"]] # 真名
+                    if origName in aliases: # 原名还是别名
+                        origName = aliases[origName]
+                    if origName in sset: # 真名在入参 strus 里面
+                        # 重命名结构指向真名结构时使用虚线
+                        tmpLinkStr = "    {}:{}->{}:head [style=\"dashed\"]\n".format(curNode["path"], replacedKey, origName)
+                        linkStr += tmpLinkStr
             if row["_cur_node_type"] == "func":
                 dotText += """    <tr><td colspan="2" port="{}">{}</td></tr>\n""".format(replacedKey, row["val"])
             else:
@@ -226,8 +242,9 @@ digraph {
 
 
 def main():
-    strus = process_code(fileinput.input())
-    dotText = generate_dot_text(strus)
+    strus, aliases = process_code(fileinput.input())
+    # print(aliases)
+    dotText = generate_dot_text(strus, aliases)
     print(dotText)
 
 

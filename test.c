@@ -68,3 +68,17 @@ static void  bsem_reset(struct bsem *bsem_p);
 static void  bsem_post(struct bsem *bsem_p);
 static void  bsem_post_all(struct bsem *bsem_p);
 static void  bsem_wait(struct bsem *bsem_p);
+
+
+typedef struct HASH_TABLE_S {
+    unsigned long long ulSize; // The size of the hash table
+    unsigned long long (*pfHash)(const void *); // A pointer to a hash function
+    HASH_LIST_S *pstBckt; // A pointer to the bucket list of the hash table
+} HASH_TABLE_S;
+
+typedef DL_HEAD_S HASH_LIST_S;
+
+typedef struct tagDL_NODE {
+    struct tagDL_NODE *pstNext; // A pointer to the next node in the doubly linked list
+    struct tagDL_NODE **ppstPre; // A pointer to the previous node's pointer in the doubly linked list
+} DL_HEAD_S;

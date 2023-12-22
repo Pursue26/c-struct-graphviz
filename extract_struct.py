@@ -23,7 +23,9 @@ for tmpline in fileinput.input():
     if "struct" in tmpline and "{" in tmpline:
 
         if "typedef" in tmpline and depth == 0: # 最外层结构体有别名
-            m0 = re.search(r' +struct +(\w+) *{ *', tmpline) # 提取真名
+            m0 = re.search(r' +struct +(\w*) *{ *', tmpline) # 提取真名
+            if m0 is not None and m0.group(1) == "": # typedef struct后没有名字
+                tmpline = tmpline.replace('struct', 'struct PLAceHOLder')
         tmpline = re.sub(r' *typedef +', '', tmpline) # 删除typedef，避免与重命名代码的typedef冲突
 
         collect = 1
@@ -36,12 +38,18 @@ for tmpline in fileinput.input():
         output_str += tmpline
         depth = depth - 1
         if depth == 0:
+            m1 = re.search(r' *} *(\** *\w+) *;', tmpline) # 最外层结构体有别名，提取别名
+            if m0 is not None:
+                if m1 is not None:
+                    if m0.group(1) == "": # typedef struct后没有名字，使用别名
+                        output_str = output_str.replace('PLAceHOLder', m1.group(1))
+                        origAliaseName[m1.group(1)] = m1.group(1) # 真名：别名
+                    else:
+                        origAliaseName[m0.group(1)] = m1.group(1) # 真名：别名
+                else:
+                    output_str.replace('PLAceHOLder', "")
             collect = 0
             print(output_str)
-
-            m1 = re.search(r' *} *(\** *\w+) *;', tmpline) # 最外层结构体有别名，提取别名
-            if m0 is not None and m1 is not None:
-                origAliaseName[m0.group(1)] = m1.group(1) # 真名：别名
     elif "typedef" in tmpline and "{" not in tmpline and ";" in tmpline:
         print(tmpline) # 处理原有代码中的 typedef origName aliaseName;
     elif collect == 1:

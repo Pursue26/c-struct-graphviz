@@ -45,30 +45,53 @@ typedef struct thpool_{
     jobqueue  jobqueue;                  /* job queue                 */
 } thpool_;
 
+/* ====================================================== */
 
+typedef enum TL_STATE_E {
+    TBL_INITED,
+    TBL_USING,
+    TBL_TIMEOUT1,
+    TBL_TIMEOUT2,
+    TBL_AGING
+} TL_STATE_E;
 
+typedef union IP_KEY_UN {
+    struct {
+        unsigned int uiIpv4SrcAddr;
+        unsigned int uiIpv4DestAddr;
+        unsigned int uiZeroPadding[6];
+    } KEY_IPV4_S;
 
+    struct {
+        unsigned int uiIpv6SrcAddr[4];
+        unsigned int uiIpv4DestAddr[4];
+    } KEY_IPV6_S;
 
-/* ========================== PROTOTYPES ============================ */
+    struct {
+        unsigned int uiGeneralKey[8];
+    } KEY_GENERAL_S;
+} IP_KEY_UN;
 
+typedef struct QUEUE_NODE_S {
+    /* hash key */
+    IP_KEY_UN unIpTupleKey;
+    unsigned long long uiiIdentifier;
 
-static int  thread_init(thpool_* thpool_p, struct thread** thread_p, int id);
-static void* thread_do(struct thread* thread_p);
-static void  thread_hold(int sig_id);
-static void  thread_destroy(struct thread* thread_p);
+    unsigned short usL4SrcPort;
+    unsigned short usL4DestPort;
+    unsigned char ucProtocol;
+    unsigned char ucIpVersion;
 
-static int   jobqueue_init(jobqueue* jobqueue_p);
-static void  jobqueue_clear(jobqueue* jobqueue_p);
-static void  jobqueue_push(jobqueue* jobqueue_p, struct job* newjob_p);
-static struct job* jobqueue_pull(jobqueue* jobqueue_p);
-static void  jobqueue_destroy(jobqueue* jobqueue_p);
+    /* hash payload */
+    unsigned long long uiiRxSysTicks; // system ticks of recv pakcet
+} QUEUE_NODE_S;
 
-static void  bsem_init(struct bsem *bsem_p, int value);
-static void  bsem_reset(struct bsem *bsem_p);
-static void  bsem_post(struct bsem *bsem_p);
-static void  bsem_post_all(struct bsem *bsem_p);
-static void  bsem_wait(struct bsem *bsem_p);
-
+typedef struct HASH_HEADER_S {
+    HASH_TABLE_S *pstTable;
+    spinlock_t stLock;
+    unsigned long long uiiStartTicks;
+    TL_STATE_E eTableState;
+} HASH_HEADER_S;
 
 typedef struct HASH_TABLE_S {
     unsigned long long ulSize; // The size of the hash table
@@ -76,9 +99,9 @@ typedef struct HASH_TABLE_S {
     HASH_LIST_S *pstBckt; // A pointer to the bucket list of the hash table
 } HASH_TABLE_S;
 
-typedef DL_HEAD_S HASH_LIST_S;
-
 typedef struct tagDL_NODE {
     struct tagDL_NODE *pstNext; // A pointer to the next node in the doubly linked list
     struct tagDL_NODE **ppstPre; // A pointer to the previous node's pointer in the doubly linked list
 } DL_HEAD_S;
+
+typedef DL_HEAD_S HASH_LIST_S;

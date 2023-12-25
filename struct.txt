@@ -28,20 +28,61 @@ struct thpool_{
     pthread_cond_t threads_all_idle;    
     jobqueue jobqueue;                  
 };
+enum TL_STATE_E {
+    TBL_INITED,
+    TBL_USING,
+    TBL_TIMEOUT1,
+    TBL_TIMEOUT2,
+    TBL_AGING} TL_STATE_E;
+union IP_KEY_UN {
+    struct {
+        unsigned int uiIpv4SrcAddr;
+        unsigned int uiIpv4DestAddr;
+        unsigned int uiZeroPadding[6];
+    } KEY_IPV4_S;
+    struct {
+        unsigned int uiIpv6SrcAddr[4];
+        unsigned int uiIpv4DestAddr[4];
+    } KEY_IPV6_S;
+    struct {
+        unsigned int uiGeneralKey[8];
+    } KEY_GENERAL_S;
+};
+struct QUEUE_NODE_S {
+    
+    IP_KEY_UN unIpTupleKey;
+    unsigned long long uiiIdentifier;
+    unsigned short usL4SrcPort;
+    unsigned short usL4DestPort;
+    unsigned char ucProtocol;
+    unsigned char ucIpVersion;
+    
+    unsigned long long uiiRxSysTicks; 
+};
+struct HASH_HEADER_S {
+    HASH_TABLE_S *pstTable;
+    spinlock_t stLock;
+    unsigned long long uiiStartTicks;
+    TL_STATE_E eTableState;
+};
 struct HASH_TABLE_S {
     unsigned long long ulSize; 
     unsigned long long (*pfHash)(const void *); 
     HASH_LIST_S *pstBckt; 
 };
-typedef DL_HEAD_S HASH_LIST_S;
 struct tagDL_NODE {
     struct tagDL_NODE *pstNext; 
     struct tagDL_NODE **ppstPre; 
 };
+typedef DL_HEAD_S HASH_LIST_S;
 typedef bsem bsem; 
 typedef job job; 
 typedef jobqueue jobqueue; 
 typedef thread thread; 
 typedef thpool_ thpool_; 
+typedef TL_STATE_E TL_STATE_E; 
+typedef IP_KEY_UN IP_KEY_UN; 
+typedef QUEUE_NODE_S QUEUE_NODE_S; 
+typedef HASH_HEADER_S HASH_HEADER_S; 
 typedef HASH_TABLE_S HASH_TABLE_S; 
 typedef tagDL_NODE DL_HEAD_S; 

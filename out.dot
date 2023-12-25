@@ -16,6 +16,60 @@ digraph {
     <tr><td colspan="2" port="pfHash">unsigned long long (*pfHash)(const void *)</td></tr>
     <tr><td>HASH_LIST_S</td><td port="_pstBckt">*pstBckt</td></tr>
     </table>>];
+    HASH_HEADER_S [label=<
+        <table border="0" cellborder="1" cellspacing="0">
+        <tr><td colspan="2" port="head"><i>HASH_HEADER_S</i></td></tr>
+    <tr><td>HASH_TABLE_S</td><td port="_pstTable">*pstTable</td></tr>
+    <tr><td>spinlock_t</td><td port="stLock">stLock</td></tr>
+    <tr><td>unsigned long long</td><td port="uiiStartTicks">uiiStartTicks</td></tr>
+    <tr><td>TL_STATE_E</td><td port="eTableState">eTableState</td></tr>
+    </table>>];
+    QUEUE_NODE_S [label=<
+        <table border="0" cellborder="1" cellspacing="0">
+        <tr><td colspan="2" port="head"><i>QUEUE_NODE_S</i></td></tr>
+    <tr><td></td><td port=""></td></tr>
+    <tr><td>IP_KEY_UN</td><td port="unIpTupleKey">unIpTupleKey</td></tr>
+    <tr><td>unsigned long long</td><td port="uiiIdentifier">uiiIdentifier</td></tr>
+    <tr><td>unsigned short</td><td port="usL4SrcPort">usL4SrcPort</td></tr>
+    <tr><td>unsigned short</td><td port="usL4DestPort">usL4DestPort</td></tr>
+    <tr><td>unsigned char</td><td port="ucProtocol">ucProtocol</td></tr>
+    <tr><td>unsigned char</td><td port="ucIpVersion">ucIpVersion</td></tr>
+    <tr><td></td><td port=""></td></tr>
+    <tr><td>unsigned long long</td><td port="uiiRxSysTicks">uiiRxSysTicks</td></tr>
+    </table>>];
+    IP_KEY_UN [label=<
+        <table border="0" cellborder="1" cellspacing="0">
+        <tr><td colspan="2" port="head"><i>IP_KEY_UN</i></td></tr>
+    <tr><td>union</td><td port="KEY_IPV4_S">KEY_IPV4_S</td></tr>
+    <tr><td>union</td><td port="KEY_IPV6_S">KEY_IPV6_S</td></tr>
+    <tr><td>union</td><td port="KEY_GENERAL_S">KEY_GENERAL_S</td></tr>
+    </table>>];
+    KEY_GENERAL_S [label=<
+        <table border="0" cellborder="1" cellspacing="0">
+        <tr><td colspan="2" port="head"><i>KEY_GENERAL_S</i></td></tr>
+    <tr><td>unsigned int</td><td port="uiGeneralKey_8_">uiGeneralKey[8]</td></tr>
+    </table>>];
+    KEY_IPV6_S [label=<
+        <table border="0" cellborder="1" cellspacing="0">
+        <tr><td colspan="2" port="head"><i>KEY_IPV6_S</i></td></tr>
+    <tr><td>unsigned int</td><td port="uiIpv6SrcAddr_4_">uiIpv6SrcAddr[4]</td></tr>
+    <tr><td>unsigned int</td><td port="uiIpv4DestAddr_4_">uiIpv4DestAddr[4]</td></tr>
+    </table>>];
+    KEY_IPV4_S [label=<
+        <table border="0" cellborder="1" cellspacing="0">
+        <tr><td colspan="2" port="head"><i>KEY_IPV4_S</i></td></tr>
+    <tr><td>unsigned int</td><td port="uiIpv4SrcAddr">uiIpv4SrcAddr</td></tr>
+    <tr><td>unsigned int</td><td port="uiIpv4DestAddr">uiIpv4DestAddr</td></tr>
+    <tr><td>unsigned int</td><td port="uiZeroPadding_6_">uiZeroPadding[6]</td></tr>
+    </table>>];
+    TL_STATE_E [label=<
+        <table border="0" cellborder="1" cellspacing="0">
+        <tr><td colspan="2" port="head"><i>TL_STATE_E</i></td></tr>
+    <tr><td>enum</td><td port="TBL_INITED">TBL_INITED</td></tr>
+    <tr><td>enum</td><td port="TBL_USING">TBL_USING</td></tr>
+    <tr><td>enum</td><td port="TBL_TIMEOUT1">TBL_TIMEOUT1</td></tr>
+    <tr><td>enum</td><td port="TBL_TIMEOUT2">TBL_TIMEOUT2</td></tr>
+    </table>>];
     thpool_ [label=<
         <table border="0" cellborder="1" cellspacing="0">
         <tr><td colspan="2" port="head"><i>thpool_</i></td></tr>
@@ -59,6 +113,12 @@ digraph {
     tagDL_NODE:_pstNext->tagDL_NODE:head [style="invis"]
     tagDL_NODE:__ppstPre->tagDL_NODE:head [style="invis"]
     HASH_TABLE_S:_pstBckt->tagDL_NODE:head [style="dashed"]
+    HASH_HEADER_S:_pstTable->HASH_TABLE_S:head [style="solid"]
+    HASH_HEADER_S:eTableState->TL_STATE_E:head [style="solid"]
+    QUEUE_NODE_S:unIpTupleKey->IP_KEY_UN:head [style="solid"]
+    IP_KEY_UN:KEY_IPV4_S->KEY_IPV4_S:head
+    IP_KEY_UN:KEY_IPV6_S->KEY_IPV6_S:head
+    IP_KEY_UN:KEY_GENERAL_S->KEY_GENERAL_S:head
     thpool_:__threads->thread:head [style="solid"]
     thpool_:jobqueue->jobqueue:head [style="solid"]
     thread:_thpool_p->thpool_:head [style="solid"]

@@ -1,6 +1,7 @@
 import fileinput
 import re
 
+enum_member_default_type = "enum" # int
 
 def convert_key(key):
     """
@@ -18,14 +19,14 @@ def convert_key(key):
     return key
 
 
-def process_struct_or_union(tmpline, depth, node_type, nodeName):
+def process_struct_or_union_or_enum(tmpline, depth, node_type):
     """
     处理结构体或联合体的定义
 
     参数: 
     tmpline: 当前行的代码字符串
     depth: 当前代码块的嵌套深度
-    node_type: 当前代码块的类型（"struct" 或 "union"）
+    node_type: 当前代码块的类型（"struct", "union" or "enum"）
     nodeName: 当前代码块的名称
 
     返回: 
@@ -36,7 +37,9 @@ def process_struct_or_union(tmpline, depth, node_type, nodeName):
     depth += 1
     if "union" in tmpline:
         node_type = "union"
-    m = re.search(r'\s*(struct|union)\s*([0-9a-zA-Z_]*)\s*{\s*', tmpline)
+    elif "enum" in tmpline:
+        node_type = "enum"
+    m = re.search(r'\s*(struct|union|enum)\s*([0-9a-zA-Z_]*)\s*{\s*', tmpline)
     assert m is not None
     nodeName = m.group(2)
     return depth, node_type, nodeName
@@ -93,7 +96,7 @@ def process_fieldobj(tmpline, depth, node_type, stack):
     参数: 
     tmpline: 当前行的代码字符串
     depth: 当前代码块的嵌套深度
-    node_type: 当前代码块的类型（"struct" 或 "union"）
+    node_type: 当前代码块的类型（"struct", "union" or "enum"）
     stack: 代码块的堆栈
 
     返回: 
@@ -113,7 +116,8 @@ def process_fieldobj(tmpline, depth, node_type, stack):
     else:
         tmpline = re.sub(r'struct', '', tmpline)
         tmpline = tmpline.strip()
-        if "," in tmpline:
+        # 单行有逗号，也必须有分号才是true，否则可能是enum类型的成员，不能进入这个if
+        if "," in tmpline and ";" in tmpline:
             fieldListOri = tmpline.split(",")
             fieldList = fieldListOri[0].split(" ")
             for field in fieldListOri[1:len(fieldListOri)]:
@@ -138,11 +142,14 @@ def process_fieldobj(tmpline, depth, node_type, stack):
             fieldList = tmpline.split(" ")
             name = fieldList[-1].strip()
             fieldobj["val"] = " ".join(fieldList[0:-1])
-            fieldobj["key"] = name
+            fieldobj["key"] = name.replace(",", "") # 考虑有enum的成员进入该分支，移除末尾的分号
             fieldobj["convert_key"] = convert_key(fieldobj["key"])
             fieldobj["_depth"] = depth
             fieldobj["_cur_node_type"] = "attr"
     fieldobj["_node_type"] = node_type
+    # 处理 enum 成员的类型，设置为默认类型
+    if fieldobj["_node_type"] == "enum" and fieldobj["val"] == "":
+        fieldobj["val"] = enum_member_default_type
     stack.append(fieldobj)
     return stack
 
@@ -161,13 +168,15 @@ def process_code(fileinput):
     strus = []
     stack = []
     node_type = "struct"
-    nodeName = ""
+    nodeNames = []
     aliases = {} # 存储结构体别名映射关系的字典
 
     for tmpline in fileinput:
-        if "struct" in tmpline and "{" in tmpline or "union" in tmpline and "{" in tmpline:
-            depth, node_type, nodeName = process_struct_or_union(tmpline, depth, node_type, nodeName)
+        if ("struct" in tmpline or "union" in tmpline or "enum" in tmpline) and "{" in tmpline:
+            depth, node_type, nodeName = process_struct_or_union_or_enum(tmpline, depth, node_type)
+            nodeNames.append(nodeName)
         elif "}" in tmpline:
+            nodeName = nodeNames.pop()
             stack, depth = process_closing_brace(tmpline, nodeName, stack, depth, strus)
         elif "typedef" in tmpline:
             # 处理结构体重命名的情况，如typedef DL_HEAD_S HASH_LIST_S; typedef struct thpool_ thpool_;
@@ -210,8 +219,7 @@ digraph {
                 tmpNode["val"] = row["val"]
                 tmpNode["path"] = row["convert_key"]
                 nodeStack.append(tmpNode)
-                tmpLinkStr = "    {}:{}->{}:head\n".format(
-                    curNode["path"], tmpNode["path"], row["key"])
+                tmpLinkStr = "    {}:{}->{}:head\n".format(curNode["path"], tmpNode["path"], row["key"])
                 linkStr += tmpLinkStr
                 sset.add(tmpNode["path"])
             nodeType = row["val"]
@@ -243,6 +251,7 @@ digraph {
 
 def main():
     strus, aliases = process_code(fileinput.input())
+    # print(strus)
     # print(aliases)
     dotText = generate_dot_text(strus, aliases)
     print(dotText)

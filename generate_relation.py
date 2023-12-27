@@ -172,6 +172,8 @@ def process_code(fileinput):
     aliases = {} # 存储结构体别名映射关系的字典
 
     for tmpline in fileinput:
+        if len(tmpline.strip()) == 0:
+            continue
         if ("struct" in tmpline or "union" in tmpline or "enum" in tmpline) and "{" in tmpline:
             depth, node_type, nodeName = process_struct_or_union_or_enum(tmpline, depth, node_type)
             nodeNames.append(nodeName)

@@ -22,7 +22,8 @@ for tmpline in fileinput.input():
     if len(tmpline.strip()) == 0:
         continue
     tmpline = normalize(tmpline)
-    if ("struct" in tmpline or "union" in tmpline or "enum" in tmpline) and "{" in tmpline:
+    isFunc = "(" in tmpline or ")" in tmpline # struct xxx* yyy_init(int num) { 跳过函数
+    if ("struct" in tmpline or "union" in tmpline or "enum" in tmpline) and "{" in tmpline and (not isFunc):
 
         if "typedef" in tmpline and depth == 0: # 最外层结构体有别名
             m0 = re.search(r' +(struct|union|enum) +(\w*) *{ *', tmpline) # 提取真名
